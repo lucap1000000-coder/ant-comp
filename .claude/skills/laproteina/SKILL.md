@@ -80,6 +80,57 @@ and a different cost model, not a flag.
 
 Same division of labour as `bindcraft2 --trajectory-only`.
 
+### What running without search actually cost, measured
+
+The TNF campaign (2026-10-07..09, 1000 backbones) is the calibration point. With
+`single-pass` + `reward_model: null`:
+
+| measure | value |
+| --- | --- |
+| designs whose pose a co-folder believes (`pair_iptm_max >= 0.5`) | 8% |
+| median `pair_iptm_max` over 1138 co-folds | 0.243 |
+| enrichment of "well-posed" by "confident interface" | **1.2x over chance** |
+
+That last row is the one to remember. Pose and interface confidence came out
+**nearly independent**, which is what "no reward model selected for pose" looks
+like in data. The generator makes well-formed domains (`binder_ptm` 0.97); it is
+not selecting the ones an independent folder will agree with.
+
+Downstream, 1000 backbones turned into ~3,480 co-folds and $400-500 of credits.
+**Generation is the cheap stage; everything downstream pays for its unselectivity.**
+
+### Turning search on: the AF2 blocker is already solved
+
+The 2026-10-08 diagnosis listed "AF2 parameters on a Volume (~5.3 GB, not yet
+downloaded)" as the thing standing in the way. **That is stale.** Verified
+2026-10-12:
+
+```
+modal volume ls bindcraft-cache bindcraft/alphafold
+  -> params_model_{1..5}.npz, _ptm.npz, _multimer_v3.npz, LICENSE
+```
+
+The full ColabDesign-style param set is on `bindcraft-cache` already, and the
+full image has JAX + ColabDesign. So both prerequisites are in place; what is
+left is pointing LPC's reward config at that mount and measuring the cost on
+~16 designs before committing a batch. **Not yet done — do not report it as done.**
+
+### Hotspot sets are not equal, and this target has numbers
+
+Four 6-residue sets on TNF-alpha, scored on 688 round-2 co-folds, passing BOTH a
+pose gate and an interface-confidence gate:
+
+| set | residues | designs | passed both | rate |
+| --- | --- | --- | --- | --- |
+| f1 | A32,A33,A145,C87,C91,C92 | 128 | 26 | **20.3%** |
+| f3 | A113,A115,C72,C75,C77,C97 | 224 | 40 | 17.9% |
+| f2 | A87,A88,A90,A92,A131,A135 | 336 | 42 | 12.5% |
+| f4 | A24,A65,A67,A138,A140,A141 | dropped | 0 of 11 earlier | dead |
+
+f2 drew 49% of the compute for the worst rate. **Pilot the sets against each
+other before allocating a batch** — a few dozen designs per set settles it, and
+this campaign settled it only in hindsight.
+
 ## Two Volumes, and why the second one exists
 
 | Mount | Volume (`.env` key, default) | Holds |
